@@ -1,0 +1,20 @@
+#https://api.mongodb.com/python/current/tutorial.html
+#import pymongo
+from pymongo import MongoClient
+import datetime
+
+client = MongoClient()
+client = MongoClient('localhost', 27017)#Or client = MongoClient('mongodb://localhost:27017/')
+db = db = client['POMDP_example'] #Or   collection = db.test_collection
+collection = db.State# Or  collection = db['State']
+
+
+post = {"author": "Mike", "text": "My first blog post!", "tags": ["mongodb", "python", "pymongo"],"date": datetime.datetime.utcnow()}
+
+
+#Inserting a Document
+posts = db.posts
+post_id = posts.insert_one(post).inserted_id# the insert created the 'posts' collection
+print(post_id)
+
+print('collection name:', db.list_collection_names())
