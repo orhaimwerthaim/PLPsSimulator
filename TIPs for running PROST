@@ -1,0 +1,35 @@
+Compilation (~/prost-planner/prost/src/rddl_parser and ~/prost-planner/prost/src/search):
+1. cd /home/or/prost-planner/prost
+2. $ ./build.py 
+Or $ ./build.py --debug
+
+
+Running PROST:
+1. cd ~/prost-planner/rddlsim
+2. $ ./compile
+
+Add to '~/.bashrc' if not added:
+'export RDDLSIM_ROOT=/home/<username>/prost-planner/rddlsim' 
+
+3. $ cd ~/prost-planner/prost/testbed
+4. $ ./run-server benchmarks/elevators-2011/
+
+from another terminal:
+5. $ cd ~/prost-planner/prost
+6. $ ./prost.py [BUILD_MODE] INSTANCE_NAME CONFIG
+example for 6.: ./prost.py elevators_inst_mdp__1 "[PROST -s 1 -se [IPPC2011]]"
+example for 6.: ./prost.py elevators_inst_mdp__1 "[PROST -s 1 -se [IPPC2014]]"
+example for 6.: ./prost.py elevators_inst_mdp__1 "[PROST -s 1 -se [[[UCT -init [Single -h [RandomWalk]]]]"
+
+
+
+
+running my simulation:
+terminal 1:
+1. $ cd ~/prost-planner/prost/testbed
+2. $ ./run-server benchmarks/example1/
+
+terminal 2:
+1. $ cd /home/or/prost-planner/prost
+2. $ ./prost.py sim_plps_inst_pomdp "[PROST -s 1 -se [IPPC2014]]"
+
