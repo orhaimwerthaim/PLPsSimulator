@@ -1,0 +1,148 @@
+domain sim_plps_pomdpz_2 {
+
+requirements = { 
+		continuous,  // this domain uses real-valued parameterized variables (pvariables)
+		concurrent,  
+		reward-deterministic, // this domain does not use a stochastic reward
+		//intermediate-nodes,   // this domain uses intermediate pvariable nodes
+		constrained-state,    // this domain uses state constraints
+		integer-valued
+	};
+	
+//types: The declaration of new (non-enumerable) types within the types block is only needed when the domain is parameterized, 
+// meaning some fluents (i.e. state fluents, action fluents etc.) are in terms of user-defined objects.
+
+types {
+		discrete_location : object;//rooms etc..
+		floor : object;
+		robot : object;
+		obj   : object;//objects in real world
+	    //person: object;
+	    direction: object;
+	    //elevator: object;
+};
+
+pvariables {
+	
+		// Action costs and penalties
+		MOVE_TO_POINT_SUCCESS_PROB            : {non-fluent, real, default =   0.92 }; // success probability of move to point
+		COST_MOVE_TO_POINT : {non-fluent, real, default =   -20 }; // Cost of move to point action
+		COST_MOVE_UNKNOWN_TO_POINT : {non-fluent, real, default =   -80 }; // Cost of move to point action (when not knowing robot current location)
+		COST_PICK: {non-fluent, real, default =   -20 }; // Cost of action
+		COST_POUR: {non-fluent, real, default =   2000 }; // Cost of action
+		PRIZE_SUCCESS_POUR  : {non-fluent, real, default =   300 }; // prize for success
+		
+		
+		at_floor(discrete_location,floor): {non-fluent, bool, default = false };
+		
+		
+		tobe_switched_on(obj): {state-fluent, bool, default = false }; //which specifc switches (type switch) have this property
+		tobe_pressed(obj) : {state-fluent, bool, default = false }; //which specific buttons (type button) have this property
+		
+		
+		
+		// State fluents
+		hand_empty(robot) : {state-fluent, bool, default = true }; //robot hand is empty
+		object_at(obj,discrete_location): {state-fluent, bool, default = false };
+		near(robot,discrete_location): {state-fluent, bool, default = false };
+		stationary(robot) : {state-fluent, bool, default = true }; 
+		pickable(obj): {state-fluent, bool, default = false }; //
+		holding(robot,obj) : {state-fluent, bool, default = false };
+		//lost_the_way(robot) : {state-fluent, bool, default = false };
+		robot_at(robot,floor) : {state-fluent, bool, default = false };
+		shift(robot) : {state-fluent, bool, default = false }; 
+		enable-capability(robot): {state-fluent, bool, default = false };//makes sure that if, by any chance, robot moves, 
+																		 //it always needs to observe to get the accurate coordinates related knowledge 
+		aware_of_the_object_location(robot, obj) : {state-fluent, bool, default = false }; //it is true when the robot has the accurate knowledge about the object 
+										//coordinates it could be for identifying switches' or buttons' locations, or pickable items' locations to perform pick
+		//empty(obj) : {state-fluent, bool, default = false };
+		//filled(obj) : {state-fluent, bool, default = false };
+		//can_be_poured(obj,obj): {state-fluent, bool, default = false };//robot is holding a pickable, 
+																		//and if it is allowed to pour in another pickable e.g., 
+																		//pour cup in a kettle, now pick the kettle and place it on the table
+		//can_twist_arm(robot,direction): {state-fluent, bool, default = false }; //if the robot can rotate its hand, 
+																//especially when it is holding something can be provided implicitly by using detection techniques  
+		
+		// Intemediate fluents    (was added to 'action-preconditions' block)
+		//precondition_pick(robot,obj,discrete_location): { interm-fluent, bool, level = 1 };
+		//precondition_pour(robot,obj,obj,direction,discrete_location) : { interm-fluent, bool, level = 1 };
+		//precondition_move_to_known_point(robot,discrete_location,floor) : { interm-fluent, bool, level = 1 };
+		//precondition_move_to_a_point(robot,discrete_location,discrete_location,floor) : { interm-fluent, bool, level = 1 };
+		
+		
+		// Action fluents
+		
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//1. Pick-known: This node receives an object name. It calls a node that is in charge of 
+		//getting the location and dimensions of this object (most likely, from the database, 
+		//which will be updated by the detection code — the latter will include disambiguation). 
+		//Then, it attempts to pick the object. 
+		//● Failure 1: location information does not exist (failed precondition) 
+		//● Failure 2: unable to perform pick (move-it) 
+		//● Failure 3: pick failed 
+		//● Future improvements: monitor object’s location during execution. 
+		//5. Pour: This node receives an object name and a direction and twists its arm in that 
+		//direction in order to perform the pouring action. Ideally, it should verify that it is pouring 
+		//in the right location to reach the object, but we will not do it now and simply twist the 
+		//arm to the requested side. Direction is clock/counter-closck-wise. 
+		//● Failure 1: location not found/cannot be disambiguated 
+		//● Failure 2: unable to perform twist in the direction 
+		//● Failure 3: twist failed 
+		//● Future improvements: monitor object’s location during execution. 
+		//21. MoveToAPoint - This node gets a location name (defined on its map) and moves to 
+		//that location. There are two action versions for it (when origin is known and when it is not 
+		//known). The node checks that it knows it current position, and if not, it localizes itself. 
+		//● Failure 1: cannot navigate/localize 
+		//● Failure 2: hardware failure
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		pick(robot,obj,discrete_location): { action-fluent, bool, default = false };
+		pour(robot,obj,obj,direction,discrete_location) : { action-fluent, bool, default = false }; 
+		move_to_known_point(robot,discrete_location,floor) : { action-fluent, bool, default = false };//;execute this action when stuck at any random point 
+		move_to_a_point(robot,discrete_location,discrete_location,floor) : { action-fluent, bool, default = false };// actions to move the robot, when robot location is known
+		};
+		cpfs {
+		
+		//precondition_pick(?r,?o,?loc)= if (aware_of_the_object_location(?r,?o)^hand_empty(?r)^object_at(?o,?loc)^near(?r,?loc)^pickable(?o)^enable-capability(?r)^stationary(?r)) then true else false;
+		holding'(?r,?o)=if(exists_{?loc : discrete_location} (pick(?r,?o,?loc))) then true else holding(?r,?o);
+		hand_empty'(?r)=if(exists_{?loc : discrete_location,?o : obj}  (pick(?r,?o,?loc))) then false else hand_empty(?r);
+		object_at'(?o,?loc)=if(exists_{?r : robot} (pick(?r,?o,?loc))) then false else object_at(?o,?loc);
+		aware_of_the_object_location'(?r,?o)=aware_of_the_object_location(?r,?o);
+		
+		//precondition_move_to_a_point(?r,?loc,?dest,?f)= if(near(?r,?loc)^robot_at(?r,?f)^at_floor(?loc,?f)^at_floor(?dest,?f)) then true else false; //was added to 'action-preconditions' block
+		//enable-capability'(?r)=if(move_to_a_point(?r,?loc,?dest,?f)) then false else enable-capability(?r); //not enaled because there is no action to make it 'true' again
+		//shift'(?r)=if(move_to_a_point(?r,?loc,?dest,?f)) then true else shift(?r);//not enaled because there is no action to make it 'false'
+		near'(?r,?m)=if(exists_{?dest : discrete_location} (move_to_a_point(?r,?m,?dest,?f))) then false else if(exists_{?loc : discrete_location} (move_to_a_point(?r,?loc,?m,?f))) then true else near(?r,?m);
+		
+		//dummy transitions, TODO:consider fluents
+		enable-capability'(?r)=enable-capability(?r);
+		shift'(?r)=shift(?r);
+		stationary'(?r)=stationary(?r);
+		pickable'(?o)=pickable(?o);
+		robot_at'(?r,?f)=robot_at(?r,?f);
+	};
+		
+		reward = 
+ 	    [sum_{?r: robot, ?m: discrete_location, ?f:floor} [ COST_MOVE_UNKNOWN_TO_POINT*move_to_known_point(?r, ?m, ?f) ]]
+	  + [sum_{?r: robot, ?l: discrete_location, ?m: discrete_location, ?f:floor} [ COST_MOVE_TO_POINT*move_to_a_point(?r, ?l, ?m, ?f) ]]
+ 	  + [sum_{?r: robot, ?o1: obj, ?o2: obj, ?d:direction, ?loc: discrete_location} [ COST_POUR*pour(?r, ?o1, ?o2, ?d, ?loc) ]]
+	  + [sum_{?r: robot, ?o: obj, ?loc: discrete_location} [ COST_PICK*pick(?r, ?o, ?loc) ]]
+	  
+	  
+ 	    // Modification: if a target is out-of-fuel, it was burnt so still penalize (since it could not have been cut-out)
+ 	  + [sum_{?x: x_pos, ?y: y_pos} [ PENALTY_TARGET_BURN*[ (burning(?x, ?y) | out-of-fuel(?x, ?y)) ^ TARGET(?x, ?y) ]]]
+ 	  + [sum_{?x: x_pos, ?y: y_pos} [ PENALTY_NONTARGET_BURN*[ burning(?x, ?y) ^ ~TARGET(?x, ?y) ]]];
+	  
+	  state-action-constraints {
+	  forall_{?r : robot,?o : obj, ?loc : discrete_location} [pick(?r,?o,?loc) => (aware_of_the_object_location(?r,?o)^hand_empty(?r)^object_at(?o,?loc)^near(?r,?loc)^pickable(?o)^enable-capability(?r)^stationary(?r))];
+	  forall_{?r : robot,?o : obj, ?loc : discrete_location} [move_to_a_point(?r,?loc,?dest,?f)=>(near(?r,?loc)^robot_at(?r,?f)^at_floor(?loc,?f)^at_floor(?dest,?f))];
+	  };
+	  
+	  //action-preconditions {
+	  //	//cannot run actions without their preconditions fulfilled
+	  //	//forall_{?r : robot,?o : obj, ?loc : discrete_location} ~[~precondition_pick(?r,?o,?loc) ^ pick(?r,?o,?loc)];
+	  //	forall_{?r : robot,?o : obj, ?loc : discrete_location} ~[~(aware_of_the_object_location(?r,?o)^hand_empty(?r)^object_at(?o,?loc)^near(?r,?loc)^pickable(?o)^enable-capability(?r)^stationary(?r)) ^ pick(?r,?o,?loc)];
+	  //	forall_{?r : robot,?o : obj, ?loc : discrete_location} ~[~(near(?r,?loc)^robot_at(?r,?f)^at_floor(?loc,?f)^at_floor(?dest,?f)) ^ move_to_a_point(robot,?loc,?dest,?f)];
+	//};
+
+}
