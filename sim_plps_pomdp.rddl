@@ -1,0 +1,97 @@
+/////////////////////////////////////////////////////////////////////////////////
+//                                                                             //
+//                                                                             //
+// RDDL MDP version of Earth Observation instance #06 for IPC 2018 by Thomas   //
+// Keller (tho.keller [at] unibas.ch), based on a domain that was created for  //
+// the paper "An Experimental Comparison of Classical, FOND and Probabilistic  //
+// Planning" by Andreas Hertle, Christian Dornhege, Thomas Keller, Robert      //
+// Mattmüller, Manuela Ortlieb, and Bernhard Nebel (KI 2014).                  //
+//                                                                             //
+//                                                                             //
+/////////////////////////////////////////////////////////////////////////////////
+domain sim_plps_pomdp {
+
+//requirements = { 
+//		continuous,  // this domain uses real-valued parameterized variables (pvariables)
+	//	concurrent,  
+		//reward-deterministic, // this domain does not use a stochastic reward
+		//intermediate-nodes,   // this domain uses intermediate pvariable nodes
+//		constrained-state,    // this domain uses state constraints
+		//integer-valued
+//	};
+	
+//types: The declaration of new (non-enumerable) types within the types block is only needed when the domain is parameterized, 
+// meaning some fluents (i.e. state fluents, action fluents etc.) are in terms of user-defined objects.
+
+types {
+		discrete_location : object;//rooms etc..
+		floor : object;
+		robot : object;
+		obj   : object;//objects in real world
+};
+
+pvariables {
+	
+		// Action costs and penalties
+		MOVE_TO_POINT_SUCCESS_PROB            : {non-fluent, real, default =   0.92 }; // success probability of move to point
+		COST_MOVE_TO_POINT : {non-fluent, real, default =   -20 }; // Cost of move to point action
+		COST_MOVE_UNKNOWN_TO_POINT : {non-fluent, real, default =   -80 }; // Cost of move to point action (when not knowing robot current location)
+		COST_PICK: {non-fluent, real, default =   200 }; // Cost of action
+		COST_POUR: {non-fluent, real, default =   2000 }; // Cost of action
+		PRIZE_SUCCESS_POUR  : {non-fluent, real, default =   300 }; // prize for success
+		
+		
+		at_floor(discrete_location,floor): {non-fluent, bool, default = false };
+		//at_floor(discrete_location,floor): {state-fluent, bool, default = false };
+		
+		// State fluents
+		hand_empty(robot) : {state-fluent, bool, default = true }; //robot hand is empty
+		object_at(obj,discrete_location): {state-fluent, bool, default = false };
+		near(robot,discrete_location): {state-fluent, bool, default = false };
+		stationary(robot) : {state-fluent, bool, default = true }; 
+		pickable(obj): {state-fluent, bool, default = false }; //
+		holding(robot,obj) : {state-fluent, bool, default = false };
+		robot_at(robot,floor) : {state-fluent, bool, default = false };
+		shift(robot) : {state-fluent, bool, default = false }; 
+		enable-capability(robot): {state-fluent, bool, default = false };//makes sure that if, by any chance, robot moves, 
+																		 //it always needs to observe to get the accurate coordinates related knowledge 
+		aware_of_the_object_location(robot, obj) : {state-fluent, bool, default = false }; //it is true when the robot has the accurate knowledge about the object 
+										//coordinates it could be for identifying switches' or buttons' locations, or pickable items' locations to perform pick
+			
+		// Action fluents
+		
+		pick(robot,obj,discrete_location): { action-fluent, bool, default = false };
+		move_to_a_point(robot,discrete_location,discrete_location,floor) : { action-fluent, bool, default = false };// actions to move the robot, when robot location is known
+		};
+		cpfs {
+		
+		holding'(?r,?o)=if(exists_{?loc : discrete_location} (pick(?r,?o,?loc))) then true else holding(?r,?o);
+		hand_empty'(?r)=if(exists_{?loc : discrete_location,?o : obj}  (pick(?r,?o,?loc))) then false else hand_empty(?r);
+		object_at'(?o,?loc)=if(exists_{?r : robot} (pick(?r,?o,?loc))) then false else object_at(?o,?loc);
+		aware_of_the_object_location'(?r,?o)=aware_of_the_object_location(?r,?o);
+		near'(?r,?m)=if(exists_{?dest : discrete_location,?f:floor} (move_to_a_point(?r,?m,?dest,?f))) then false else if(exists_{?loc : discrete_location,?f:floor} (move_to_a_point(?r,?loc,?m,?f))) then true else near(?r,?m);
+		
+		//dummy transitions, TODO:consider fluents
+		enable-capability'(?r)=enable-capability(?r);
+		shift'(?r)=shift(?r);
+		stationary'(?r)=stationary(?r);
+		pickable'(?o)=pickable(?o);
+		robot_at'(?r,?f)=robot_at(?r,?f);
+	};
+		
+		reward = 
+		[sum_{?r: robot, ?o: obj, ?loc: discrete_location} [ COST_PICK*pick(?r, ?o, ?loc) ]]
+	+	[sum_{?r: robot, ?l: discrete_location, ?m: discrete_location, ?f:floor} [ COST_MOVE_TO_POINT*move_to_a_point(?r, ?l, ?m, ?f) ]];
+		
+//		(if(exists_{?r: robot, ?o: obj, ?loc: discrete_location} pick(?r, ?o, ?loc)) then COST_PICK else 0)
+//	+	(if(exists_{?r: robot, ?l: discrete_location, ?m: discrete_location, ?f:floor}move_to_a_point(?r, ?l, ?m, ?f)) then COST_MOVE_TO_POINT else 0);
+		
+	  
+	  	  
+	  state-action-constraints {
+	  //forall_{?r : robot,?o : obj, ?loc : discrete_location} [pick(?r,?o,?loc) => (hand_empty(?r)^object_at(?o,?loc)^near(?r,?loc)^pickable(?o)^enable-capability(?r)^stationary(?r)) ^ pick(?r,?o,?loc)];
+	  forall_{?r : robot,?o : obj, ?loc : discrete_location} [pick(?r,?o,?loc) => (hand_empty(?r)^object_at(?o,?loc)^near(?r,?loc)^pickable(?o)^enable-capability(?r)^stationary(?r)) ^ pick(?r,?o,?loc)];
+	  forall_{?r : robot,?o : obj, ?loc : discrete_location, ?dest : discrete_location, ?f:floor} [move_to_a_point(?r,?loc,?dest,?f)=>(near(?r,?loc)^robot_at(?r,?f)^at_floor(?loc,?f)^at_floor(?dest,?f))];
+	  };
+
+}
