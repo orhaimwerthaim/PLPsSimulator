@@ -1,0 +1,38 @@
+non-fluents nf_sim_plps_inst_pomdp {
+	domain = sim_plps_pomdp;
+	objects {
+		discrete_location : {robot_lab,office,hallway};
+		floor : {f0,f1,f2};
+		robot : {armadillo};
+		obj : {can};
+		//direction : {clockwise,counterclockwise};
+	};
+	non-fluents {
+		at_floor(office,f2);
+		at_floor(hallway,f2);
+		at_floor(robot_lab,f2);
+	};
+}
+
+instance sim_plps_inst_pomdp {
+	domain = sim_plps_pomdp;
+		
+	non-fluents = nf_sim_plps_inst_pomdp;
+	
+	init-state {
+		
+		near(armadillo,office);
+		object_at(can,robot_lab);
+		robot_at(armadillo,f2);
+		
+		aware_of_the_object_location(armadillo,can);
+		near(armadillo,office);
+		pickable(can);
+		enable-capability(armadillo);
+		stationary(armadillo);
+	};
+
+	max-nondef-actions = 1;
+	horizon  = 3;
+	discount = 1.0;
+}
