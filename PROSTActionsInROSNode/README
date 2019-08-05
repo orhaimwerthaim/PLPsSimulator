@@ -1,2 +1,23 @@
+PROST TO ROS node communication:
+
 If you want to get the commands to execute in a PROST session:
-1. 
+1. install PROST on your machine.
+2. replace .../prost-planner/rddlsim/src/rddl/competition/Server.java with the Server.java file in this repository.
+3. put SendToROS.java file from this repository on your .../prost-planner/rddlsim/src/rddl/competition/ directory.
+4. put tcp_server.py in an existing ROS package and activate it.
+5. activate PROST server using:
+  A. cd .../prost-planner/prost/testbed
+  B. ./run-server benchmarks/<your RDDLs directory>/ <port> 1
+  We are adding the '<port> 1' because default  is 30 rounds of simulation and we want a one round simulation.
+6. activate PROST client/solver using:
+  A. cd .../prost-planner/prost
+  B. ./prost.py <rddl instance name> "[PROST -s 1 -se [IPPC2014]]"
+  
+  
+  
+All the above will cause the client to request a session from the server.
+The solver will communicate with server.
+Every time the Server will receive a message from the solver it will publish it
+using TCP to port 1770 (should be configurable in the future).
+The ROS node will receive these messages and print the ones that contain actions to execute.
+The developer can add his own handler for each action (like activating a ROS node that correspond to that action)
