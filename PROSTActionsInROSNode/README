@@ -20,4 +20,19 @@ The solver will communicate with server.
 Every time the Server will receive a message from the solver it will publish it
 using TCP to port 1770 (should be configurable in the future).
 The ROS node will receive these messages and print the ones that contain actions to execute.
-The developer can add his own handler for each action (like activating a ROS node that correspond to that action)
+The developer can add his own handler for each action (like activating a ROS node that correspond to that action
+
+
+It is importent to first run  tcp_server.py then the Server and then the solver.
+If you closed the Server or the ROS tcp_server.py node and you cannot run them again,
+maybe it is because the ports were not closed.
+
+you may use these commands to close the process (pid) that is keeping the port
+(Server default port is 2323, ROS node port is 1770):
+show all listenning ports and their pids:
+$ sudo netstat -lnp
+
+$ pkill <pid>
+$ kill <pid>
+
+sudo kill $(sudo lsof -t -i:<portNum>)
